@@ -1,0 +1,108 @@
+datasource db { provider = "sqlite"; url = env("DATABASE_URL") }
+generator client { provider = "prisma-client-js" }
+
+enum Role { ADMIN BREWER OPERATOR }
+enum EquipmentCategory { BREWING FERMENTING PACKAGING }
+enum FermenterType { CCV BBT }
+enum ActionType { DRY_HOP COLLAGE AJOUT FILTRATION TRANSFERT DEBOURBAGE COLD_CRASH CONDITIONNEMENT BRASSAGE }
+enum PackagingSecondary { CARTON_6 CARTON_9 CARTON_12 VRAC }
+
+model Brewery {
+  id           String   @id @default(cuid())
+  name         String
+  timezone     String   @default("Europe/Paris")
+  users        User[]
+  equipments   Equipment[]
+  recipes      Recipe[]
+  ingredients  Ingredient[]
+  batches      Batch[]
+  labels       Label[]
+  settings     Settings?
+}
+
+model User {
+  id         String  @id @default(cuid())
+  email      String  @unique
+  password   String
+  role       Role
+  firstName  String
+  lastName   String
+  breweryId  String
+  brewery    Brewery @relation(fields: [breweryId], references: [id])
+  hourlyRate Decimal?
+}
+
+model Equipment {
+  id             String   @id @default(cuid())
+  name           String
+  category       EquipmentCategory
+  usableVolume   Decimal?
+  fermenterType  FermenterType?
+  maxBrewsPerDay Int?
+  isActive       Boolean  @default(true)
+  isMaintenance  Boolean  @default(false)
+  breweryId      String
+  brewery        Brewery  @relation(fields: [breweryId], references: [id])
+  containers     PackagingContainer[]
+}
+
+model PackagingContainer {
+  id          String   @id @default(cuid())
+  name        String
+  volumeL     Decimal
+  cadencePerHour Int
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+}
+
+model Recipe {
+  id        String  @id @default(cuid())
+  name      String
+  bjcpCode  String
+  colorHex  String
+  mashHours Int
+  fermDays  Int
+  lagerDays Int
+  diacetylDays Int?
+  softCrashDays Int?
+  breweryId String
+  brewery   Brewery @relation(fields: [breweryId], references: [id])
+}
+
+model Ingredient {
+  id        String  @id @default(cuid())
+  kind      String
+  name      String
+  meta      Json
+  breweryId String?
+  brewery   Brewery? @relation(fields: [breweryId], references: [id])
+}
+
+model Label {
+  id        String  @id @default(cuid())
+  recipeId  String
+  name      String
+  recipe    Recipe   @relation(fields: [recipeId], references: [id])
+}
+
+model Batch {
+  id           String  @id @default(cuid())
+  lotCode      String  @unique
+  recipeId     String
+  breweryId    String
+  recipe       Recipe  @relation(fields: [recipeId], references: [id])
+  brewery      Brewery @relation(fields: [breweryId], references: [id])
+  targetVolumeL Decimal
+  yeastGeneration Int?
+}
+
+model Settings {
+  id           String @id @default(cuid())
+  breweryId    String @unique
+  units        Json
+  stockMin     Json?
+  alerts       Json?
+  waterProfile Json?
+  costs        Json?
+  brewery      Brewery @relation(fields: [breweryId], references: [id])
+}
